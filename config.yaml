@@ -1,0 +1,26 @@
+# What Sentinel watches. Edit freely.
+# The ntfy topic is read from the NTFY_TOPIC environment variable.
+
+interval: 300   # seconds between checks
+
+sources:
+  # Big earthquakes from the USGS public feed.
+  - name: big-earthquakes
+    type: usgs
+    feed: "4.5_day"        # all magnitude 4.5+ in the last 24h
+    min_magnitude: 5.0     # only notify me about M5.0+
+
+  # New releases of a GitHub project.
+  - name: ruff-releases
+    type: github
+    repo: astral-sh/ruff
+
+  # Hacker News stories mentioning a keyword.
+  - name: hn-python
+    type: hackernews
+    query: python
+
+  # Any RSS / Atom feed.
+  - name: hn-frontpage
+    type: rss
+    url: https://hnrss.org/frontpage

@@ -1,18 +1,8 @@
 # Python
 __pycache__/
-*.py[cod]
-*.egg-info/
-.eggs/
-build/
-dist/
+*.pyc
 .venv/
 venv/
-.pytest_cache/
-.ruff_cache/
 
-# Local config & secrets
-config.yaml
-.env
-
-# Runtime data (SQLite history, heartbeat)
-data/
+# Runtime state
+seen.json
