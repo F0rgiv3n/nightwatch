@@ -7,8 +7,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the app.
-COPY sentinel.py config.yaml ./
+COPY nightwatch.py config.yaml ./
 
 # NTFY_TOPIC must be provided at runtime, e.g.:
-#   docker run -e NTFY_TOPIC=my-topic sentinel
-CMD ["python", "sentinel.py"]
+#   docker run -e NTFY_TOPIC=my-topic nightwatch
+CMD ["python", "nightwatch.py"]

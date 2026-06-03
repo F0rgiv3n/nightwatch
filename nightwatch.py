@@ -1,5 +1,5 @@
 """
-Sentinel - a simple change monitor.
+Nightwatch - a simple change monitor.
 
 It checks a few online sources (earthquakes, GitHub releases, Hacker News,
 RSS feeds) every few minutes and sends a phone notification (via ntfy.sh)
@@ -18,7 +18,7 @@ import requests
 import yaml
 
 # We send a friendly, identifying User-Agent with every request (good manners).
-HEADERS = {"User-Agent": "Sentinel/1.0 (https://github.com/F0rgiv3n/sentinel)"}
+HEADERS = {"User-Agent": "Nightwatch/1.0 (https://github.com/F0rgiv3n/nightwatch)"}
 
 SEEN_FILE = "seen.json"
 
@@ -119,7 +119,7 @@ def send_notification(topic, title, url):
     requests.post(
         f"https://ntfy.sh/{topic}",
         data=title.encode("utf-8"),
-        headers={"Title": "Sentinel", "Click": url or topic},
+        headers={"Title": "Nightwatch", "Click": url or topic},
         timeout=15,
     )
 
@@ -179,7 +179,7 @@ def main():
     interval = config.get("interval", 300)  # seconds between checks
     seen = load_seen()
 
-    print(f"Sentinel started. Checking {len(config['sources'])} sources every {interval}s.")
+    print(f"Nightwatch started. Checking {len(config['sources'])} sources every {interval}s.")
     while True:
         check_all_sources(config, seen, topic)
         save_seen(seen)

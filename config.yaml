@@ -1,4 +1,4 @@
-# What Sentinel watches. Edit freely.
+# What Nightwatch watches. Edit freely.
 # The ntfy topic is read from the NTFY_TOPIC environment variable.
 
 interval: 300   # seconds between checks

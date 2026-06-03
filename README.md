@@ -1,4 +1,4 @@
-# Sentinel
+# Nightwatch
 
 A simple change monitor. It checks a few online sources every few minutes and
 sends a notification to your phone (via [ntfy.sh](https://ntfy.sh)) whenever
@@ -11,7 +11,7 @@ It can watch:
 - **Hacker News** — stories matching a keyword
 - **RSS / Atom feeds** — any feed you like
 
-All of it is one file (`sentinel.py`, ~190 lines) and one config file.
+All of it is one file (`nightwatch.py`, ~190 lines) and one config file.
 
 ## How it works
 
@@ -29,18 +29,18 @@ so you don't get flooded on startup.
 ```bash
 pip install -r requirements.txt
 
-export NTFY_TOPIC=sentinel-pick-something-random
-python sentinel.py
+export NTFY_TOPIC=nightwatch-pick-something-random
+python nightwatch.py
 ```
 
-Then open `https://ntfy.sh/sentinel-pick-something-random` in a browser or the
+Then open `https://ntfy.sh/nightwatch-pick-something-random` in a browser or the
 ntfy app to receive the alerts.
 
 ## Run it with Docker
 
 ```bash
-docker build -t sentinel .
-docker run -e NTFY_TOPIC=sentinel-pick-something-random sentinel
+docker build -t nightwatch .
+docker run -e NTFY_TOPIC=nightwatch-pick-something-random nightwatch
 ```
 
 ## Configuration
@@ -79,7 +79,7 @@ sources:
 ## Adding a new source
 
 Write a function that returns a list of `{"id", "title", "url"}` items and add
-it to the `SOURCES` dictionary in `sentinel.py`. That's it.
+it to the `SOURCES` dictionary in `nightwatch.py`. That's it.
 
 ## License
 
