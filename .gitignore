@@ -6,3 +6,6 @@ venv/
 
 # Runtime state
 seen.json
+
+# stray runtime data
+data/
