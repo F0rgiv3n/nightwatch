@@ -1,118 +1,70 @@
 """
-Nightwatch - a simple change monitor.
+Nightwatch - a simple earthquake monitor for Greece.
 
-It checks a few online sources (earthquakes, GitHub releases, Hacker News,
-RSS feeds) every few minutes and sends a phone notification (via ntfy.sh)
-whenever something new appears.
+Every few minutes it asks the public USGS earthquake service for recent
+earthquakes inside a map box around Greece, and sends a phone notification
+(via ntfy.sh) for any new one above a chosen magnitude.
 
-What it watches is set in config.yaml. The ntfy topic comes from the
-NTFY_TOPIC environment variable.
+Settings live in config.yaml. The ntfy topic comes from the NTFY_TOPIC
+environment variable.
 """
 
 import json
 import os
 import time
+from datetime import datetime, timedelta, timezone
 
-import feedparser
 import requests
 import yaml
 
-# We send a friendly, identifying User-Agent with every request (good manners).
+# A friendly, identifying User-Agent on every request (good manners).
 HEADERS = {"User-Agent": "Nightwatch/1.0 (https://github.com/F0rgiv3n/nightwatch)"}
 
 SEEN_FILE = "seen.json"
 
 
-# --------------------------------------------------------------------------
-# Sources
-#
-# Each function receives that source's settings from config.yaml and returns
-# a list of items. An item is a small dictionary: {"id", "title", "url"}.
-# The "id" must be unique and stable so we can tell new items from old ones.
-# --------------------------------------------------------------------------
-
 def fetch_usgs(settings):
-    """Earthquakes from the public USGS feed (no API key needed)."""
-    feed = settings.get("feed", "4.5_day")
-    min_magnitude = settings.get("min_magnitude", 0)
-    url = f"https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/{feed}.geojson"
+    """Recent earthquakes from USGS, limited to a geographic box.
 
-    data = requests.get(url, headers=HEADERS, timeout=20).json()
+    Returns a list of items: {"id", "title", "url"}.
+    """
+    # How far back to look (in days) and the smallest magnitude we care about.
+    period_days = settings.get("period_days", 1)
+    start = datetime.now(timezone.utc) - timedelta(days=period_days)
+
+    params = {
+        "format": "geojson",
+        "starttime": start.strftime("%Y-%m-%dT%H:%M:%S"),
+        "minmagnitude": settings.get("min_magnitude", 0),
+        # Bounding box (a rectangle on the map) around the area we watch.
+        "minlatitude": settings.get("min_latitude"),
+        "maxlatitude": settings.get("max_latitude"),
+        "minlongitude": settings.get("min_longitude"),
+        "maxlongitude": settings.get("max_longitude"),
+    }
+    # Drop any settings that weren't provided in config.yaml.
+    params = {key: value for key, value in params.items() if value is not None}
+
+    url = "https://earthquake.usgs.gov/fdsnws/event/1/query"
+    data = requests.get(url, headers=HEADERS, params=params, timeout=20).json()
 
     items = []
     for quake in data["features"]:
-        magnitude = quake["properties"]["mag"]
-        if magnitude is None or magnitude < min_magnitude:
-            continue
+        info = quake["properties"]
         items.append({
             "id": quake["id"],
-            "title": f"M{magnitude} - {quake['properties']['place']}",
-            "url": quake["properties"]["url"],
-        })
-    return items
-
-
-def fetch_github(settings):
-    """Releases of a GitHub repository (official API, no key needed)."""
-    repo = settings["repo"]  # e.g. "astral-sh/ruff"
-    url = f"https://api.github.com/repos/{repo}/releases"
-
-    releases = requests.get(url, headers=HEADERS, timeout=20).json()
-
-    items = []
-    for release in releases:
-        items.append({
-            "id": str(release["id"]),
-            "title": f"{repo} {release['tag_name']}",
-            "url": release["html_url"],
-        })
-    return items
-
-
-def fetch_hackernews(settings):
-    """Hacker News stories that match a keyword (official search API)."""
-    query = settings["query"]
-    url = f"https://hn.algolia.com/api/v1/search_by_date?query={query}&tags=story"
-
-    hits = requests.get(url, headers=HEADERS, timeout=20).json()["hits"]
-
-    items = []
-    for hit in hits:
-        story_id = hit["objectID"]
-        items.append({
-            "id": story_id,
-            "title": hit.get("title") or "(no title)",
-            "url": hit.get("url") or f"https://news.ycombinator.com/item?id={story_id}",
-        })
-    return items
-
-
-def fetch_rss(settings):
-    """Any RSS or Atom feed."""
-    feed = feedparser.parse(settings["url"])
-
-    items = []
-    for entry in feed.entries:
-        items.append({
-            "id": entry.get("id") or entry.get("link"),
-            "title": entry.get("title", "(no title)"),
-            "url": entry.get("link"),
+            "title": f"M{info['mag']} - {info['place']}",
+            "url": info["url"],
         })
     return items
 
 
 # Map the "type" in config.yaml to the function that handles it.
+# (Only earthquakes for now, but easy to extend later.)
 SOURCES = {
     "usgs": fetch_usgs,
-    "github": fetch_github,
-    "hackernews": fetch_hackernews,
-    "rss": fetch_rss,
 }
 
-
-# --------------------------------------------------------------------------
-# Notifications and saved state
-# --------------------------------------------------------------------------
 
 def send_notification(topic, title, url):
     """Send one push notification to our ntfy topic."""
@@ -137,10 +89,6 @@ def save_seen(seen):
     with open(SEEN_FILE, "w") as f:
         json.dump(seen, f, indent=2)
 
-
-# --------------------------------------------------------------------------
-# Main logic
-# --------------------------------------------------------------------------
 
 def check_all_sources(config, seen, topic):
     """Check every source once and notify about anything new."""

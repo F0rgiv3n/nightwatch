@@ -1,26 +1,17 @@
-# What Nightwatch watches. Edit freely.
+# What Nightwatch watches: earthquakes in the Greece area.
 # The ntfy topic is read from the NTFY_TOPIC environment variable.
 
-interval: 300   # seconds between checks
+interval: 300   # seconds between checks (300 = every 5 minutes)
 
 sources:
-  # Big earthquakes from the USGS public feed.
-  - name: big-earthquakes
+  - name: greece-earthquakes
     type: usgs
-    feed: "4.5_day"        # all magnitude 4.5+ in the last 24h
-    min_magnitude: 5.0     # only notify me about M5.0+
+    min_magnitude: 3.5      # only notify for magnitude 3.5 and above
+    period_days: 1          # look at the last 24 hours
 
-  # New releases of a GitHub project.
-  - name: ruff-releases
-    type: github
-    repo: astral-sh/ruff
-
-  # Hacker News stories mentioning a keyword.
-  - name: hn-python
-    type: hackernews
-    query: python
-
-  # Any RSS / Atom feed.
-  - name: hn-frontpage
-    type: rss
-    url: https://hnrss.org/frontpage
+    # Bounding box around Greece (latitude / longitude).
+    # Covers the mainland, the Aegean and the islands.
+    min_latitude: 34.0
+    max_latitude: 42.0
+    min_longitude: 19.0
+    max_longitude: 29.5

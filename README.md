@@ -1,28 +1,22 @@
 # Nightwatch
 
-A simple change monitor. It checks a few online sources every few minutes and
-sends a notification to your phone (via [ntfy.sh](https://ntfy.sh)) whenever
-something new appears.
+A simple earthquake monitor for **Greece**. Every few minutes it checks the
+public [USGS earthquake service](https://earthquake.usgs.gov/) for recent
+earthquakes in the Greece area and sends a notification to your phone (via
+[ntfy.sh](https://ntfy.sh)) for any new one above a magnitude you choose.
 
-It can watch:
-
-- **Earthquakes** — the public USGS feed
-- **GitHub releases** — new releases of any repository
-- **Hacker News** — stories matching a keyword
-- **RSS / Atom feeds** — any feed you like
-
-All of it is one file (`nightwatch.py`, ~190 lines) and one config file.
+It's one small file (`nightwatch.py`) and one config file.
 
 ## How it works
 
-1. Read `config.yaml` to see what to watch.
-2. For each source, fetch the current list of items.
-3. Compare against `seen.json` (the ids we saw last time).
-4. Send a notification for anything new, then save the new ids.
+1. Read `config.yaml` (which area and minimum magnitude to watch).
+2. Ask USGS for recent earthquakes inside a map box around Greece.
+3. Compare against `seen.json` (the earthquakes we already saw).
+4. Send a notification for any new one, then save the ids.
 5. Wait a few minutes and repeat.
 
-The first time it sees a source it just saves a baseline (no notifications),
-so you don't get flooded on startup.
+The first time it runs it just saves a baseline (no notifications), so you
+don't get flooded on startup.
 
 ## Run it locally
 
@@ -48,38 +42,29 @@ docker run -e NTFY_TOPIC=nightwatch-pick-something-random nightwatch
 Edit `config.yaml`:
 
 ```yaml
-interval: 300   # seconds between checks
+interval: 300   # seconds between checks (300 = every 5 minutes)
 
 sources:
-  - name: big-earthquakes
+  - name: greece-earthquakes
     type: usgs
-    feed: "4.5_day"
-    min_magnitude: 5.0
+    min_magnitude: 3.5      # only notify for magnitude 3.5 and above
+    period_days: 1          # look at the last 24 hours
 
-  - name: ruff-releases
-    type: github
-    repo: astral-sh/ruff
-
-  - name: hn-python
-    type: hackernews
-    query: python
-
-  - name: hn-frontpage
-    type: rss
-    url: https://hnrss.org/frontpage
+    # Bounding box around Greece (latitude / longitude).
+    min_latitude: 34.0
+    max_latitude: 42.0
+    min_longitude: 19.0
+    max_longitude: 29.5
 ```
 
-| `type`        | What it watches               | Settings                  |
-| ------------- | ----------------------------- | ------------------------- |
-| `usgs`        | USGS earthquake feed          | `feed`, `min_magnitude`   |
-| `github`      | A repo's releases             | `repo` (`owner/name`)     |
-| `hackernews`  | HN stories matching a keyword | `query`                   |
-| `rss`         | Any RSS/Atom feed             | `url`                     |
+| Setting         | Meaning                                            |
+| --------------- | -------------------------------------------------- |
+| `min_magnitude` | Ignore earthquakes weaker than this                |
+| `period_days`   | How far back to look on each check                 |
+| `min/max_latitude`, `min/max_longitude` | The map box to watch       |
 
-## Adding a new source
-
-Write a function that returns a list of `{"id", "title", "url"}` items and add
-it to the `SOURCES` dictionary in `nightwatch.py`. That's it.
+To watch a different region, just change the bounding box. Raise
+`min_magnitude` if you get too many alerts (Greece is very seismically active).
 
 ## License
 
