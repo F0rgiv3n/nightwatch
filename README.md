@@ -1,5 +1,9 @@
 # Sentinel
 
+[![CI](https://github.com/F0rgiv3n/sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/F0rgiv3n/sentinel/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 **A legal-first, source-agnostic change-monitoring framework.**
 
 Sentinel watches things that change on the internet — new software releases, news
@@ -70,7 +74,7 @@ piece can be swapped without touching the others.
 ## Quickstart (Docker — recommended)
 
 ```bash
-git clone https://github.com/yourname/sentinel.git
+git clone https://github.com/F0rgiv3n/sentinel.git
 cd sentinel
 
 cp .env.example .env                 # set NTFY_TOPIC to something unguessable
@@ -104,7 +108,7 @@ Everything lives in `config.yaml` (see `config.example.yaml` for a documented
 template). `${VAR}` and `${VAR:-default}` are expanded from the environment.
 
 ```yaml
-user_agent: "Sentinel/0.1 (+https://github.com/yourname/sentinel)"
+user_agent: "Sentinel/0.1 (+https://github.com/F0rgiv3n/sentinel)"
 database: data/sentinel.db
 default_interval: 300          # seconds; per-source interval overrides this
 notify_on_first_run: false     # silence the startup baseline

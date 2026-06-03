@@ -70,7 +70,7 @@ def load_config(path: str | Path) -> Config:
 
     user_agent = data.get(
         "user_agent",
-        "Sentinel/0.1 (+https://github.com/yourname/sentinel)",
+        "Sentinel/0.1 (+https://github.com/F0rgiv3n/sentinel)",
     )
 
     return Config(

@@ -8,7 +8,7 @@
 
 # How Sentinel identifies itself to every server it contacts. Be honest:
 # include a contact/URL so site operators can reach you.
-user_agent: "Sentinel/0.1 (+https://github.com/yourname/sentinel)"
+user_agent: "Sentinel/0.1 (+https://github.com/F0rgiv3n/sentinel)"
 
 # Where history (seen items + conditional-GET cursors) is persisted.
 database: data/sentinel.db
