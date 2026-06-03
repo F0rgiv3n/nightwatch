@@ -7,6 +7,17 @@ earthquakes in the Greece area and sends a notification to your phone (via
 
 It's one small file (`nightwatch.py`) and one config file.
 
+## Demo
+
+A real earthquake alert delivered to a phone via ntfy — tap it and it opens the
+official USGS event page with the full details:
+
+<p align="center">
+  <img src="docs/notification.png" alt="Nightwatch earthquake notification on a phone" width="300">
+  &nbsp;&nbsp;
+  <img src="docs/usgs-event.png" alt="The USGS event page opened from the notification" width="300">
+</p>
+
 ## How it works
 
 1. Read `config.yaml` (which area and minimum magnitude to watch).

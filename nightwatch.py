@@ -67,11 +67,19 @@ SOURCES = {
 
 
 def send_notification(topic, title, url):
-    """Send one push notification to our ntfy topic."""
+    """Send one push notification to our ntfy topic.
+
+    `title` becomes the bold heading (e.g. "M4.2 - 74 km W of Kýthira, Greece"),
+    the body invites a tap, and tapping opens the USGS event page.
+    """
     requests.post(
         f"https://ntfy.sh/{topic}",
-        data=title.encode("utf-8"),
-        headers={"Title": "Nightwatch", "Click": url or topic},
+        data="Tap for details on USGS".encode("utf-8"),
+        headers={
+            "Title": title.encode("utf-8"),
+            "Tags": "earth_africa",   # shows a 🌍 icon in the notification
+            "Click": url or topic,
+        },
         timeout=15,
     )
 
@@ -115,7 +123,7 @@ def check_all_sources(config, seen, topic):
         else:
             for item in new_items:
                 print(f"[{name}] NEW: {item['title']}")
-                send_notification(topic, f"{name}: {item['title']}", item["url"])
+                send_notification(topic, item["title"], item["url"])
 
 
 def main():
