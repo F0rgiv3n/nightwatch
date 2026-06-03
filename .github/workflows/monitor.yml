@@ -1,0 +1,55 @@
+name: Earthquake monitor
+
+# Runs on a schedule (and on demand) to check for new earthquakes.
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes (GitHub may delay it a little)
+  workflow_dispatch:          # adds a "Run workflow" button for manual testing
+
+# We only read the repo; state is kept in the Actions cache, not committed.
+permissions:
+  contents: read
+
+# If a run is still going when the next one starts, skip the new one.
+concurrency:
+  group: earthquake-monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Restore the list of earthquakes we've already notified about.
+      # restore-keys: "seen-" grabs the most recent cache from a previous run.
+      - name: Restore state
+        uses: actions/cache/restore@v4
+        with:
+          path: seen.json
+          key: seen-${{ github.run_id }}
+          restore-keys: seen-
+
+      - name: Check for new earthquakes
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          RUN_ONCE: "1"
+        run: python nightwatch.py
+
+      # Save the updated state under a new unique key for the next run to find.
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: seen.json
+          key: seen-${{ github.run_id }}

@@ -124,10 +124,17 @@ def main():
     with open("config.yaml") as f:
         config = yaml.safe_load(f)
 
-    interval = config.get("interval", 300)  # seconds between checks
     seen = load_seen()
 
-    print(f"Nightwatch started. Checking {len(config['sources'])} sources every {interval}s.")
+    # RUN_ONCE=1 does a single check and exits. This is what the GitHub Actions
+    # schedule uses. Without it we loop forever (handy when running on a server).
+    if os.getenv("RUN_ONCE"):
+        check_all_sources(config, seen, topic)
+        save_seen(seen)
+        return
+
+    interval = config.get("interval", 300)  # seconds between checks
+    print(f"Nightwatch started. Checking every {interval}s.")
     while True:
         check_all_sources(config, seen, topic)
         save_seen(seen)
