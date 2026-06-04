@@ -3,7 +3,7 @@ name: Earthquake monitor
 # Runs on a schedule (and on demand) to check for new earthquakes.
 on:
   schedule:
-    - cron: "*/15 * * * *"   # every 15 minutes (GitHub may delay it a little)
+    - cron: "*/5 * * * *"    # every 5 minutes (GitHub's minimum; may still be delayed)
   workflow_dispatch:          # adds a "Run workflow" button for manual testing
 
 # We only read the repo; state is kept in the Actions cache, not committed.

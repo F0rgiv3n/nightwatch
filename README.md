@@ -47,7 +47,7 @@ persist state → run on a schedule.**
 
 ## What it does
 
-- ⏱️ Checks for recent Greek earthquakes **every 15 minutes**.
+- ⏱️ Checks for recent Greek earthquakes **every 5 minutes**.
 - 🗺️ Filters by a **geographic bounding box** around Greece (mainland, Aegean,
   islands) using the USGS query API — not a global feed with the wrong results.
 - 🎚️ Only alerts above a **magnitude you choose** (default M3.5), so you're not
@@ -62,7 +62,7 @@ persist state → run on a schedule.**
 
 ```
                  ┌──────────────────────────────────────────────┐
-   GitHub Actions│  every 15 min  →  python nightwatch.py        │
+   GitHub Actions│  every 5 min   →  python nightwatch.py        │
    (the "cron")  └───────────────────────┬──────────────────────┘
                                          │
                  ┌───────────────────────▼──────────────────────┐
@@ -123,11 +123,20 @@ docker run -e NTFY_TOPIC=your-unguessable-topic nightwatch
 2. Add a repository **secret** named `NTFY_TOPIC`
    (Settings → Secrets and variables → Actions) with your topic name.
 3. That's it — the workflow in [`.github/workflows/monitor.yml`](.github/workflows/monitor.yml)
-   runs every 15 minutes. You can also trigger it manually from the **Actions**
+   runs every 5 minutes. You can also trigger it manually from the **Actions**
    tab ("Run workflow").
 
 > The first scheduled run records a silent baseline; you'll start getting alerts
 > from the next new earthquake onward.
+
+> **⚠️ Proof of concept, not real-time.** The GitHub Actions schedule is a free,
+> zero-infrastructure way to run and demo Nightwatch. GitHub's cron is capped at
+> ~5-minute granularity and is often delayed, so it's perfect for a demo but
+> **not** truly live. For real-time, reliable operation you need a process that
+> runs continuously on a server or always-on machine — that's exactly what the
+> **Dockerfile** is for: deploy the container to any cloud host (or your own
+> box) and it loops on its own short `interval` instead of waiting for GitHub's
+> scheduler.
 
 ## Configuration
 
@@ -186,9 +195,12 @@ or anything with a public API.
 - **Data source:** USGS is a global authority and reliably catalogs Greek
   earthquakes from roughly M3+. For very small local events, the Greek national
   network (NOA) or EMSC would be more exhaustive — a good future source.
-- **Timing:** GitHub's scheduled workflows can be delayed by a few minutes under
-  load, so treat alerts as "within ~15–20 minutes," not real-time/emergency
-  warnings.
+- **Timing (important):** On GitHub Actions this is a **proof of concept**, not a
+  real-time system. GitHub's cron runs at best every ~5 minutes and is often
+  delayed, so treat alerts as "within several minutes." For real-time, reliable
+  delivery, run the **Docker** container continuously on a cloud host or an
+  always-on machine (see the note in *Run it 24/7*). Either way, never rely on it
+  as an official emergency-warning system.
 - **Notifications:** ntfy topics on the public server are readable by anyone who
   knows the name — pick an unguessable one.
 
