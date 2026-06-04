@@ -10,6 +10,11 @@ on:
 permissions:
   contents: read
 
+# The bundled actions (checkout/setup-python/cache) still default to the
+# deprecated Node.js 20 runtime; opt into Node.js 24 now to clear the warning.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 # If a run is still going when the next one starts, skip the new one.
 concurrency:
   group: earthquake-monitor
