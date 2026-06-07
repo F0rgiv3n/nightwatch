@@ -10,6 +10,7 @@ environment variable.
 """
 
 import json
+import math
 import os
 import time
 from datetime import datetime, timedelta, timezone
@@ -59,6 +60,79 @@ def fetch_usgs(settings):
     return items
 
 
+# NOA labels most events with a coarse region (often just "Greece"), so for a
+# useful notification heading we work out the nearest town from the coordinates
+# ourselves. Names are kept in the genitive ("της Χαλκίδας") to read naturally
+# in "22 km ΒΔ της Χαλκίδας". (name, latitude, longitude)
+GREEK_CITIES = [
+    ("της Αθήνας", 37.98, 23.73), ("της Θεσσαλονίκης", 40.64, 22.94),
+    ("της Πάτρας", 38.25, 21.73), ("του Ηρακλείου", 35.34, 25.13),
+    ("της Λάρισας", 39.64, 22.42), ("του Βόλου", 39.36, 22.95),
+    ("των Ιωαννίνων", 39.67, 20.85), ("της Καβάλας", 40.94, 24.41),
+    ("της Χαλκίδας", 38.46, 23.60), ("της Καλαμάτας", 37.04, 22.11),
+    ("της Τρίπολης", 37.51, 22.37), ("της Κέρκυρας", 39.62, 19.92),
+    ("της Ρόδου", 36.43, 28.22), ("της Κω", 36.89, 27.29),
+    ("των Χανίων", 35.51, 24.02), ("της Μυτιλήνης", 39.11, 26.55),
+    ("της Χίου", 38.37, 26.14), ("της Σάμου", 37.75, 26.98),
+    ("της Αλεξανδρούπολης", 40.85, 25.87), ("της Κοζάνης", 40.30, 21.79),
+    ("της Σπάρτης", 37.07, 22.43), ("του Αγρινίου", 38.62, 21.41),
+    ("της Λαμίας", 38.90, 22.43), ("της Κατερίνης", 40.27, 22.51),
+    ("των Σερρών", 41.09, 23.55), ("του Ναυπλίου", 37.57, 22.80),
+    ("του Πύργου", 37.67, 21.44), ("της Ζακύνθου", 37.79, 20.90),
+    ("του Αργοστολίου", 38.18, 20.49), ("της Σύρου", 37.44, 24.94),
+    ("της Νάξου", 37.10, 25.38), ("της Σαντορίνης", 36.42, 25.43),
+    ("της Καρπάθου", 35.51, 27.21), ("της Λήμνου", 39.87, 25.06),
+    ("του Ρεθύμνου", 35.37, 24.47), ("του Αγίου Νικολάου", 35.19, 25.72),
+    ("της Πρέβεζας", 38.96, 20.75), ("της Κορίνθου", 37.94, 22.93),
+    ("της Λιβαδειάς", 38.44, 22.88), ("της Λίμνης Ευβοίας", 38.77, 23.32),
+    ("της Καρδίτσας", 39.36, 21.92), ("των Τρικάλων", 39.56, 21.77),
+    ("της Κομοτηνής", 41.12, 25.40), ("της Ξάνθης", 41.13, 24.88),
+    ("της Δράμας", 41.15, 24.15), ("της Βέροιας", 40.52, 22.20),
+    ("του Μεσολογγίου", 38.37, 21.43), ("της Άρτας", 39.16, 20.99),
+]
+
+# 8-point compass in Greek, clockwise from North.
+_COMPASS = ["Β", "ΒΑ", "Α", "ΝΑ", "Ν", "ΝΔ", "Δ", "ΒΔ"]
+
+
+def _haversine_km(lat1, lon1, lat2, lon2):
+    """Great-circle distance between two lat/lon points, in kilometres."""
+    radius = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    return 2 * radius * math.asin(math.sqrt(a))
+
+
+def _compass(lat1, lon1, lat2, lon2):
+    """Rough compass direction (Β/ΒΑ/…) from point 1 towards point 2."""
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dlambda = math.radians(lon2 - lon1)
+    y = math.sin(dlambda) * math.cos(phi2)
+    x = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(dlambda)
+    bearing = (math.degrees(math.atan2(y, x)) + 360) % 360
+    return _COMPASS[round(bearing / 45) % 8]
+
+
+def describe_location(lat, lon, fallback):
+    """A human place for the heading, e.g. "22 km ΒΔ της Χαλκίδας".
+
+    Finds the nearest town from GREEK_CITIES. If the epicenter is very close we
+    just name the area; if it's far from every town (open sea) we fall back to
+    whatever region NOA gave us.
+    """
+    name, city_lat, city_lon = min(
+        GREEK_CITIES, key=lambda c: _haversine_km(lat, lon, c[1], c[2])
+    )
+    distance = _haversine_km(lat, lon, city_lat, city_lon)
+    if distance < 3:
+        return f"στην ευρύτερη περιοχή {name}"
+    if distance <= 120:
+        return f"{round(distance)} km {_compass(city_lat, city_lon, lat, lon)} {name}"
+    return fallback
+
+
 def fetch_noa(settings):
     """Recent earthquakes from the National Observatory of Athens (NOA).
 
@@ -98,12 +172,13 @@ def fetch_noa(settings):
         if not line or line.startswith("#"):
             continue  # skip the header line and any blanks
         fields = line.split("|")
-        event_id, lat, lon, depth = fields[0], fields[2], fields[3], fields[4]
+        event_id, lat, lon = fields[0], fields[2], fields[3]
         magnitude = float(fields[10])
-        place = fields[12] or "Greece"
+        region = fields[12] or "Ελλάδα"
+        where = describe_location(float(lat), float(lon), region)
         items.append({
             "id": event_id,
-            "title": f"M{magnitude:.1f} - {place} ({float(depth):.0f} km deep)",
+            "title": f"M{magnitude:.1f} · {where}",
             # NOA has no stable per-event page, so link to the epicenter on a map.
             "url": f"https://www.google.com/maps?q={lat},{lon}",
         })

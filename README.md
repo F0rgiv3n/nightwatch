@@ -65,9 +65,12 @@ While I was in there, I also:
 
 - **lowered the alert threshold from M3.5 to M3.0** — NOA reports magnitudes on
   the local **ML / Richter** scale, which is exactly what Greek news quotes;
-- **changed what a notification opens** — NOA doesn't have a public page per
-  event, so tapping an alert now opens the **epicenter on a map** (plus the
-  magnitude, place and depth right in the notification).
+- **made the notifications more useful** — NOA doesn't have a public page per
+  event, so tapping an alert now opens the **epicenter on a map**. And since
+  NOA usually only labels events as a vague "Greece", the heading names the
+  **nearest town**, worked out from the coordinates (e.g. *M5.2 · 13 km ΝΑ της
+  Λίμνης Ευβοίας*) — no geocoding service, just a built-in list of towns and a
+  distance calculation.
 
 The old USGS source is still in the code as an alternate, in case it's ever
 useful for another region.
