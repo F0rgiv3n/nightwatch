@@ -11,16 +11,20 @@ your phone within minutes of one happening — for free, fully automated, using
 only official public data.
 
 It runs itself 24/7 on **GitHub Actions** (no server to rent, no credit card),
-reads earthquake data from the **U.S. Geological Survey (USGS)** public API, and
-delivers alerts through **[ntfy](https://ntfy.sh)**. The whole thing is one
-readable Python file.
+reads earthquake data from the **National Observatory of Athens (NOA)** public
+API — Greece's national seismic network — and delivers alerts through
+**[ntfy](https://ntfy.sh)**. The whole thing is one readable Python file.
+
+> ℹ️ **This is a proof-of-concept / portfolio project.** It is not (yet) a
+> full, guaranteed alerting service — see [*Notes & limitations*](#notes--limitations)
+> for what that means in practice.
 
 ---
 
 ## 📲 Demo
 
-A real alert delivered to a phone. Tapping it opens the official USGS event page
-with the full details (map, magnitude, depth, coordinates):
+A real alert delivered to a phone. Tapping it opens a map centred on the
+earthquake's epicenter:
 
 <p align="center">
   <img src="docs/notification.png" alt="Nightwatch earthquake notification on a phone" width="300">
@@ -49,14 +53,14 @@ persist state → run on a schedule.**
 
 - ⏱️ Checks for recent Greek earthquakes **every 5 minutes**.
 - 🗺️ Filters by a **geographic bounding box** around Greece (mainland, Aegean,
-  islands) using the USGS query API — not a global feed with the wrong results.
-- 🎚️ Only alerts above a **magnitude you choose** (default M3.5), so you're not
-  buzzed for every tiny tremor.
+  islands) using the NOA query API — the national network, not a global feed
+  that misses moderate Greek quakes.
+- 🎚️ Only alerts above a **magnitude you choose** (default M3.0, on the local /
+  Richter scale NOA reports), so you're not buzzed for every tiny tremor.
 - 🔁 Remembers what it has already reported, so you get each earthquake **once**.
 - 🤫 Stays silent on first run (saves a baseline) so it never floods you on
   startup.
-- 🔔 Sends a clean push notification that links straight to the official USGS
-  page.
+- 🔔 Sends a clean push notification that opens the epicenter on a map.
 
 ## How it works
 
@@ -66,7 +70,7 @@ persist state → run on a schedule.**
    (the "cron")  └───────────────────────┬──────────────────────┘
                                          │
                  ┌───────────────────────▼──────────────────────┐
-                 │ 1. Ask USGS for recent quakes in the Greece   │
+                 │ 1. Ask NOA for recent quakes in the Greece    │
                  │    bounding box, above the chosen magnitude   │
                  │ 2. Compare against seen.json (already alerted)│
                  │ 3. For each NEW quake → send ntfy push        │
@@ -86,7 +90,7 @@ This is intentionally small, but it touches a full, realistic toolchain:
 
 | Area | What's shown |
 | --- | --- |
-| **Public API integration** | Consuming the USGS `fdsnws` REST API, parsing GeoJSON |
+| **Public API integration** | Consuming the NOA `fdsnws` REST API, parsing the FDSN text format |
 | **Geospatial filtering** | Bounding-box (lat/lon) querying for a region |
 | **Change detection** | Stateful "what's new since last time" logic |
 | **Push notifications** | Event-driven alerts via ntfy |
@@ -146,9 +150,9 @@ Everything lives in [`config.yaml`](config.yaml):
 interval: 300   # seconds between checks when running as a long-lived process
 
 sources:
-  - name: greece-earthquakes
-    type: usgs
-    min_magnitude: 3.5      # only notify for magnitude 3.5 and above
+  - name: greece-earthquakes-noa
+    type: noa               # National Observatory of Athens (best source for Greece)
+    min_magnitude: 3.0      # only notify for magnitude 3.0 and above (Richter / ML)
     period_days: 1          # look back this many days on each check
 
     # Bounding box around Greece (latitude / longitude):
@@ -187,14 +191,19 @@ nightwatch/
 Nightwatch is structured so other data sources slot in easily. Each source is a
 function that returns a list of `{"id", "title", "url"}` items; register it in
 the `SOURCES` dict in `nightwatch.py` and reference its `type` in `config.yaml`.
-Natural next additions: the Greek **NOA / EMSC** seismic feeds, weather warnings,
-or anything with a public API.
+A `usgs` source is also bundled as an alternate. Natural next additions:
+**EMSC** feeds, weather warnings, or anything with a public API.
 
 ## Notes & limitations
 
-- **Data source:** USGS is a global authority and reliably catalogs Greek
-  earthquakes from roughly M3+. For very small local events, the Greek national
-  network (NOA) or EMSC would be more exhaustive — a good future source.
+- **Proof of concept:** this is a portfolio/demo project, not a hardened
+  service. It's intentionally not a "full" alerting system yet — coverage,
+  reliability and timing are good enough to demonstrate the pipeline, not to be
+  relied on for safety.
+- **Data source:** NOA (National Observatory of Athens) is Greece's national
+  network and catalogs Greek earthquakes far more completely and quickly than
+  the global USGS feed (it even feeds EMSC). Magnitudes are reported on the local
+  (ML / Richter) scale. A `usgs` source is still bundled as an alternate.
 - **Timing (important):** On GitHub Actions this is a **proof of concept**, not a
   real-time system. GitHub's cron runs at best every ~5 minutes and is often
   delayed, so treat alerts as "within several minutes." For real-time, reliable

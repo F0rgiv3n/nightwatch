@@ -4,9 +4,11 @@
 interval: 300   # seconds between checks (300 = every 5 minutes)
 
 sources:
-  - name: greece-earthquakes
-    type: usgs
-    min_magnitude: 3.5      # only notify for magnitude 3.5 and above
+  # Renamed from the old USGS source: a new name makes Nightwatch save a fresh
+  # silent baseline instead of treating every NOA id as "new" on the switch.
+  - name: greece-earthquakes-noa
+    type: noa               # National Observatory of Athens (best source for Greece)
+    min_magnitude: 3.0      # only notify for magnitude 3.0 and above (Richter / ML)
     period_days: 1          # look at the last 24 hours
 
     # Bounding box around Greece (latitude / longitude).

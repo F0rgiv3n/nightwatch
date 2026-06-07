@@ -59,10 +59,61 @@ def fetch_usgs(settings):
     return items
 
 
+def fetch_noa(settings):
+    """Recent earthquakes from the National Observatory of Athens (NOA).
+
+    NOA is Greece's national seismic network: it catalogs Greek earthquakes far
+    more completely and quickly than the global USGS feed (it even feeds EMSC),
+    so it's the better source for Greece. Its FDSN service only speaks the
+    pipe-delimited "text" format (no GeoJSON), which we parse here.
+
+    Returns a list of items: {"id", "title", "url"}.
+    """
+    period_days = settings.get("period_days", 1)
+    start = datetime.now(timezone.utc) - timedelta(days=period_days)
+
+    params = {
+        "format": "text",
+        "starttime": start.strftime("%Y-%m-%dT%H:%M:%S"),
+        # NOTE: the NOA FDSN service uses the short FDSN names (minmag, minlat …),
+        # unlike USGS which wants minmagnitude/minlatitude.
+        "minmag": settings.get("min_magnitude", 0),
+        "minlat": settings.get("min_latitude"),
+        "maxlat": settings.get("max_latitude"),
+        "minlon": settings.get("min_longitude"),
+        "maxlon": settings.get("max_longitude"),
+    }
+    # Drop any settings that weren't provided in config.yaml.
+    params = {key: value for key, value in params.items() if value is not None}
+
+    url = "https://eida.gein.noa.gr/fdsnws/event/1/query"
+    text = requests.get(url, headers=HEADERS, params=params, timeout=20).text
+
+    # Each line is pipe-delimited:
+    #   EventID|Time|Lat|Lon|Depth|Author|Catalog|Contributor|ContributorID|
+    #   MagType|Magnitude|MagAuthor|EventLocationName|EventType
+    items = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue  # skip the header line and any blanks
+        fields = line.split("|")
+        event_id, lat, lon, depth = fields[0], fields[2], fields[3], fields[4]
+        magnitude = float(fields[10])
+        place = fields[12] or "Greece"
+        items.append({
+            "id": event_id,
+            "title": f"M{magnitude:.1f} - {place} ({float(depth):.0f} km deep)",
+            # NOA has no stable per-event page, so link to the epicenter on a map.
+            "url": f"https://www.google.com/maps?q={lat},{lon}",
+        })
+    return items
+
+
 # Map the "type" in config.yaml to the function that handles it.
-# (Only earthquakes for now, but easy to extend later.)
 SOURCES = {
     "usgs": fetch_usgs,
+    "noa": fetch_noa,
 }
 
 
@@ -74,7 +125,7 @@ def send_notification(topic, title, url):
     """
     requests.post(
         f"https://ntfy.sh/{topic}",
-        data="Tap for details on USGS".encode("utf-8"),
+        data="Tap to open the epicenter on a map".encode("utf-8"),
         headers={
             "Title": title.encode("utf-8"),
             "Tags": "earth_africa",   # shows a 🌍 icon in the notification
