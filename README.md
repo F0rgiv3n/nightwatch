@@ -1,4 +1,4 @@
-# 🌍 Nightwatch — Greece Earthquake Alerts
+# 🌍 Nightwatch — earthquake alerts for Greece
 
 **🇬🇧 English** · [🇬🇷 Ελληνικά](README.el.md)
 
@@ -6,61 +6,71 @@
 [![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**Nightwatch** watches for earthquakes in Greece and pushes a notification to
-your phone within minutes of one happening — for free, fully automated, using
-only official public data.
+Nightwatch keeps an eye on earthquakes in Greece and pushes a notification to my
+phone a couple of minutes after one happens. It's free, it runs on its own, and
+it only uses official public data.
 
-It runs itself 24/7 on **GitHub Actions** (no server to rent, no credit card),
-reads earthquake data from the **National Observatory of Athens (NOA)** public
-API — Greece's national seismic network — and delivers alerts through
-**[ntfy](https://ntfy.sh)**. The whole thing is one readable Python file.
+I built it for a simple reason: Greece shakes *a lot* — small and moderate
+quakes happen almost every day — and I wanted a quiet, reliable heads-up on my
+phone without installing yet another ad-filled app or paying for a server just to
+keep a script alive.
 
-> ℹ️ **This is a proof-of-concept / portfolio project.** It is not (yet) a
-> full, guaranteed alerting service — see [*Notes & limitations*](#notes--limitations)
-> for what that means in practice.
+It's a small project on purpose, but it does the whole loop end to end: ask an
+official source for recent quakes → work out which ones are new → send a push →
+remember what it already sent → repeat on a schedule. The entire thing is one
+readable Python file.
+
+> ℹ️ **This is a proof-of-concept / portfolio project, not a safety system.** It
+> works well enough to be genuinely useful and to show the pipeline off, but
+> please don't rely on it as an official early-warning service. More in
+> [*Notes & limitations*](#notes--limitations).
 
 ---
 
-## 📲 Demo
+## 📲 What it looks like
 
-A real alert delivered to a phone. Tapping it opens a map centred on the
-earthquake's epicenter:
+A real alert on the phone. Tapping it opens a map centred on the earthquake's
+epicenter, so you can see exactly where it was:
 
 <p align="center">
-  <img src="docs/notification.png" alt="Nightwatch earthquake notification on a phone" width="300">
+  <img src="docs/notification.png" alt="A Nightwatch earthquake notification on a phone" width="300">
   &nbsp;&nbsp;
-  <img src="docs/usgs-event.png" alt="The USGS event page opened from the notification" width="300">
+  <img src="docs/usgs-event.png" alt="An earthquake details page" width="300">
 </p>
+
+> The right-hand screenshot is from the earlier USGS-based version (see the next
+> section). Today the notification opens a map of the epicenter instead.
 
 ---
 
-## Why this exists
+## What I changed, and why (June 2026)
 
-Greece is one of the most seismically active countries in Europe — small and
-moderate earthquakes happen almost daily. I wanted a **simple, reliable, and
-free** way to get an instant heads-up on my phone whenever a notable earthquake
-strikes the country, without:
+This is the interesting part, so it's worth telling honestly.
 
-- installing yet another app full of ads,
-- paying for a server to keep a script running, or
-- scraping anything I shouldn't.
+Nightwatch originally pulled its data from **USGS** (the U.S. Geological Survey).
+It worked — until it didn't. A real **M3.2 near Crete** went by with no alert,
+and then two days later a bigger quake *did* notify me. That's backwards, so I
+went digging.
 
-Nightwatch solves exactly that, and along the way it's a compact demonstration
-of a real end-to-end pipeline: **fetch data → detect what's new → notify →
-persist state → run on a schedule.**
+The culprit was the data source. USGS is a **global** catalogue: it's excellent
+for big events anywhere on Earth, but it routinely **misses moderate (M3–4)
+Greek earthquakes, or lists them late**. The quake I missed was simply never in
+the USGS feed at the time — even though the Greek national network had it within
+a minute.
 
-## What it does
+So I switched the source to the **National Observatory of Athens (NOA)** — the
+Γεωδυναμικό Ινστιτούτο, Greece's own seismic network (and the one that feeds the
+European EMSC). It catalogues Greek quakes far more completely and much faster.
+While I was in there, I also:
 
-- ⏱️ Checks for recent Greek earthquakes **every 5 minutes**.
-- 🗺️ Filters by a **geographic bounding box** around Greece (mainland, Aegean,
-  islands) using the NOA query API — the national network, not a global feed
-  that misses moderate Greek quakes.
-- 🎚️ Only alerts above a **magnitude you choose** (default M3.0, on the local /
-  Richter scale NOA reports), so you're not buzzed for every tiny tremor.
-- 🔁 Remembers what it has already reported, so you get each earthquake **once**.
-- 🤫 Stays silent on first run (saves a baseline) so it never floods you on
-  startup.
-- 🔔 Sends a clean push notification that opens the epicenter on a map.
+- **lowered the alert threshold from M3.5 to M3.0** — NOA reports magnitudes on
+  the local **ML / Richter** scale, which is exactly what Greek news quotes;
+- **changed what a notification opens** — NOA doesn't have a public page per
+  event, so tapping an alert now opens the **epicenter on a map** (plus the
+  magnitude, place and depth right in the notification).
+
+The old USGS source is still in the code as an alternate, in case it's ever
+useful for another region.
 
 ## How it works
 
@@ -73,36 +83,41 @@ persist state → run on a schedule.**
                  │ 1. Ask NOA for recent quakes in the Greece    │
                  │    bounding box, above the chosen magnitude   │
                  │ 2. Compare against seen.json (already alerted)│
-                 │ 3. For each NEW quake → send ntfy push        │
+                 │ 3. For each NEW quake → send an ntfy push     │
                  │ 4. Save the updated seen.json                 │
                  └───────────────────────┬──────────────────────┘
                                          │
-                          ntfy.sh ───────▼──────►  📱 your phone
+                          ntfy.sh ───────▼──────►  📱 my phone
 ```
 
-State (`seen.json`) is kept between scheduled runs using the **GitHub Actions
-cache**, so the bot remembers what it already sent — without polluting the git
-history with bot commits.
+A few details that make it behave nicely:
 
-## Tech stack & what it demonstrates
+- It filters by a **bounding box** around Greece (mainland, Aegean, the islands),
+  so you only get quakes from the region you care about.
+- It **stays silent on the very first run** — it just records what's already out
+  there as a baseline, so it never floods you on startup.
+- It remembers what it has reported in `seen.json`, so you get each quake **once**.
+- On GitHub Actions that state is kept in the **Actions cache** between runs, so
+  the bot remembers what it sent without committing bot noise into git history.
 
-This is intentionally small, but it touches a full, realistic toolchain:
+## What it touches (for the portfolio-curious)
+
+Small, but it walks through a realistic end-to-end toolchain:
 
 | Area | What's shown |
 | --- | --- |
-| **Public API integration** | Consuming the NOA `fdsnws` REST API, parsing the FDSN text format |
-| **Geospatial filtering** | Bounding-box (lat/lon) querying for a region |
-| **Change detection** | Stateful "what's new since last time" logic |
-| **Push notifications** | Event-driven alerts via ntfy |
-| **Containerization** | A small, single-stage **Dockerfile** |
-| **CI/CD & automation** | A scheduled **GitHub Actions** workflow that runs the job 24/7 |
-| **Secrets management** | Notification target stored as a GitHub Actions **secret**, never hard-coded |
-| **Stateful workflows** | Persisting `seen.json` across runs via Actions **cache** |
-| **Clean code** | One readable file, plain functions, no over-engineering |
+| Public API integration | Consuming the NOA `fdsnws` REST API and parsing the FDSN text format |
+| Geospatial filtering | Bounding-box (lat/lon) querying for a region |
+| Change detection | Stateful "what's new since last time" logic |
+| Push notifications | Event-driven alerts via ntfy |
+| Containerization | A small, single-stage Dockerfile |
+| CI/CD & automation | A scheduled GitHub Actions workflow that runs the job 24/7 |
+| Secrets management | The notification target lives in a GitHub Actions secret, never hard-coded |
+| Stateful workflows | Persisting `seen.json` across runs via the Actions cache |
 
-## Getting started
+## Running it
 
-### Run locally
+### Locally
 
 ```bash
 pip install -r requirements.txt
@@ -111,36 +126,27 @@ export NTFY_TOPIC=your-unguessable-topic     # pick any unique name
 python nightwatch.py
 ```
 
-Subscribe to the same topic in the [ntfy app](https://ntfy.sh) (or open
+Subscribe to the same topic in the [ntfy app](https://ntfy.sh) (or just open
 `https://ntfy.sh/your-unguessable-topic` in a browser) to receive the alerts.
 
-### Run with Docker
+### With Docker
 
 ```bash
 docker build -t nightwatch .
 docker run -e NTFY_TOPIC=your-unguessable-topic nightwatch
 ```
 
-### Run it 24/7 with GitHub Actions (free)
+### 24/7 on GitHub Actions (free)
 
 1. Fork/clone this repo to your own GitHub account.
 2. Add a repository **secret** named `NTFY_TOPIC`
    (Settings → Secrets and variables → Actions) with your topic name.
 3. That's it — the workflow in [`.github/workflows/monitor.yml`](.github/workflows/monitor.yml)
-   runs every 5 minutes. You can also trigger it manually from the **Actions**
+   runs every 5 minutes, and you can also trigger it by hand from the **Actions**
    tab ("Run workflow").
 
-> The first scheduled run records a silent baseline; you'll start getting alerts
-> from the next new earthquake onward.
-
-> **⚠️ Proof of concept, not real-time.** The GitHub Actions schedule is a free,
-> zero-infrastructure way to run and demo Nightwatch. GitHub's cron is capped at
-> ~5-minute granularity and is often delayed, so it's perfect for a demo but
-> **not** truly live. For real-time, reliable operation you need a process that
-> runs continuously on a server or always-on machine — that's exactly what the
-> **Dockerfile** is for: deploy the container to any cloud host (or your own
-> box) and it loops on its own short `interval` instead of waiting for GitHub's
-> scheduler.
+The first run records a silent baseline; you'll start getting alerts from the
+next new earthquake onward.
 
 ## Configuration
 
@@ -169,49 +175,34 @@ sources:
 | `min/max_latitude`, `min/max_longitude` | The map box (region) to watch |
 | `interval` | Seconds between checks (only used in the long-running loop, not in Actions) |
 
-**Watch a different region:** just change the bounding box.
-**Too many alerts?** Raise `min_magnitude` (Greece is very seismically active).
+Want a different region? Change the bounding box. Too many alerts? Raise
+`min_magnitude` — Greece is genuinely busy.
 
-## Project structure
+## Adding another source
 
-```
-nightwatch/
-├── nightwatch.py              # the whole program (fetch → detect → notify)
-├── config.yaml                # what to watch
-├── requirements.txt           # requests, PyYAML
-├── Dockerfile                 # containerized run
-├── .github/workflows/
-│   └── monitor.yml            # scheduled 24/7 runner (GitHub Actions)
-├── docs/                      # demo screenshots
-└── README.md
-```
-
-## Extending it
-
-Nightwatch is structured so other data sources slot in easily. Each source is a
-function that returns a list of `{"id", "title", "url"}` items; register it in
-the `SOURCES` dict in `nightwatch.py` and reference its `type` in `config.yaml`.
-A `usgs` source is also bundled as an alternate. Natural next additions:
-**EMSC** feeds, weather warnings, or anything with a public API.
+Each source is just a function that returns a list of `{"id", "title", "url"}`
+items. Register it in the `SOURCES` dict in `nightwatch.py` and reference its
+`type` in `config.yaml` — that's the whole contract. A `usgs` source ships
+alongside `noa` as a worked example. Natural next additions: EMSC, weather
+warnings, or anything with a public API.
 
 ## Notes & limitations
 
-- **Proof of concept:** this is a portfolio/demo project, not a hardened
-  service. It's intentionally not a "full" alerting system yet — coverage,
-  reliability and timing are good enough to demonstrate the pipeline, not to be
-  relied on for safety.
-- **Data source:** NOA (National Observatory of Athens) is Greece's national
-  network and catalogs Greek earthquakes far more completely and quickly than
-  the global USGS feed (it even feeds EMSC). Magnitudes are reported on the local
-  (ML / Richter) scale. A `usgs` source is still bundled as an alternate.
-- **Timing (important):** On GitHub Actions this is a **proof of concept**, not a
-  real-time system. GitHub's cron runs at best every ~5 minutes and is often
-  delayed, so treat alerts as "within several minutes." For real-time, reliable
-  delivery, run the **Docker** container continuously on a cloud host or an
-  always-on machine (see the note in *Run it 24/7*). Either way, never rely on it
-  as an official emergency-warning system.
-- **Notifications:** ntfy topics on the public server are readable by anyone who
-  knows the name — pick an unguessable one.
+- **It's a proof of concept.** A portfolio/demo project, not a hardened service.
+  Coverage, reliability and timing are good enough to show the pipeline working —
+  not something to bet your safety on.
+- **About the timing.** On GitHub Actions this is *not* real-time. GitHub's cron
+  fires every ~5 minutes at best and is often delayed, so treat alerts as "within
+  several minutes." For genuinely fast, reliable delivery, run the **Docker**
+  container continuously on a small cloud host (or any always-on machine) — it
+  loops on its own short `interval` instead of waiting for GitHub's scheduler.
+- **Data source.** NOA (National Observatory of Athens) is Greece's national
+  network: it catalogues Greek quakes far more completely and faster than the
+  global USGS feed, and reports magnitudes on the local ML / Richter scale. Some
+  events come in as fast automatic solutions that can later be revised — that's
+  the price of real-time.
+- **ntfy topics** on the public server are readable by anyone who knows the name,
+  so pick one that isn't easy to guess.
 
 ## License
 
