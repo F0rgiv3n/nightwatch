@@ -2,7 +2,7 @@
 
 **🇬🇧 English** · [🇬🇷 Ελληνικά](README.el.md)
 
-[![Earthquake monitor](https://github.com/F0rgiv3n/nightwatch/actions/workflows/monitor.yml/badge.svg)](https://github.com/F0rgiv3n/nightwatch/actions/workflows/monitor.yml)
+[![Earthquake monitor](https://github.com/geogoor/nightwatch/actions/workflows/monitor.yml/badge.svg)](https://github.com/geogoor/nightwatch/actions/workflows/monitor.yml)
 [![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 

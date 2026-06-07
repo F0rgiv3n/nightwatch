@@ -19,7 +19,7 @@ import requests
 import yaml
 
 # A friendly, identifying User-Agent on every request (good manners).
-HEADERS = {"User-Agent": "Nightwatch/1.0 (https://github.com/F0rgiv3n/nightwatch)"}
+HEADERS = {"User-Agent": "Nightwatch/1.0 (https://github.com/geogoor/nightwatch)"}
 
 SEEN_FILE = "seen.json"
 
